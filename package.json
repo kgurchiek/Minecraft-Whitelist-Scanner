@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "minecraft-data": "^3.67.0",
+    "mineflayer": "^4.20.1",
+    "net": "^1.0.2",
+    "varint": "^6.0.0"
+  }
+}
