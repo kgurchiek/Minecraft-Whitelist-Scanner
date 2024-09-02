@@ -4,5 +4,6 @@
   "ipsPath": "./ips",
   "mongoURI": "",
   "dbName": "",
-  "collectionName": ""
+  "collectionName": "",
+  "repeat": false
 }
