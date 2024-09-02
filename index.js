@@ -82,7 +82,7 @@ async function scan() {
       }
       await new Promise(res => setTimeout(res, 1000));
     }
-    console.log(`${ip}:${port} ${version.minecraftVersion} ${result == null ? 'unknown' : result}  ${new Date().getTime() - lastResult}`);
+    console.log(`${ip}:${port} ${version.minecraftVersion} ${result == null ? 'unknown' : result} ${new Date().getTime() - lastResult / 1000}s`);
     lastResult = new Date().getTime();
     scannedServers.updateOne({ ip, port }, { $set: { ip, port, version: slp.version, description: slp.description, enforcesSecureChat: slp.enforcesSecureChat, hasFavicon: slp.favicon != null, hasForgeData: slp.forgeData != null, whitelist: result, lastSeen: Math.floor((new Date()).getTime() / 1000) } }, { upsert: true });
     // await new Promise(res => setTimeout(res, 1000));
