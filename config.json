@@ -1,5 +1,8 @@
 {
   "username": "",
   "password": "",
-  "ipsPath": "./ips"
+  "ipsPath": "./ips",
+  "mongoURI": "",
+  "dbName": "",
+  "collectionName": ""
 }

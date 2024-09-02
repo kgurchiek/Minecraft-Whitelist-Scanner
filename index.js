@@ -1,7 +1,9 @@
 const fs = require('fs');
 const mineflayer = require('mineflayer');
 const ping = require('./ping.js');
+const MongoClient = require('mongodb').MongoClient;
 const config = require('./config.json');
+const scannedServers = new MongoClient(config.mongoURI).db(config.dbName).collection(config.collectionName);
 
 function check(ip, port, version) {
   return new Promise((resolve, reject) => {
@@ -17,7 +19,7 @@ function check(ip, port, version) {
     })
 
     bot.on('login', async () => {
-      bot.chat('Hello, this is a server scanner bot created by Cornbread2100. If you don\'t want your server to be joinable by random people, the only way to protect your server is by enabling a whitelist. Just banning this bot will NOT protect your server.');
+      bot.chat('This is a server scanner bot created by Cornbread2100. If you don\'t want your server to be joinable by random people, the only way to protect your server is by enabling a whitelist. Just banning this bot will NOT protect your server.');
       bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. If you have any questions or concerns, you can contact me on Discord at @cornbread2100 or email me at support@cornbread2100.com');
       clearTimeout(endTimeout);
       endTimeout = setTimeout(() => {
@@ -35,12 +37,12 @@ function check(ip, port, version) {
     // Log errors and kick reasons:
     bot.on('kicked', (reason) => {
       if (typeof reason == 'object') reason = JSON.stringify(reason);
-      console.log(`Kicked from ${ip}:${port}`, reason);
+      // console.log(`Kicked from ${ip}:${port}`, reason);
       if (reason.includes('You are not whitelisted on this server') || reason.includes('multiplayer.disconnect.not_whitelisted')) resolve(true);
       else resolve(null);
     });
     bot.on('error', (err) => {
-      console.log(`Error on ${ip}:${port}`);
+      // console.log(`Error on ${ip}:${port} ${version}`, err);
       if (err.message.includes('RateLimiter disallowed request') || err.message.includes('Failed to obtain profile data')) resolve('retry');
       else resolve(null);
     });
@@ -62,21 +64,20 @@ function check(ip, port, version) {
     try {
       result = await check(ip, port, version.minecraftVersion);
     } catch (err) {
-      console.log(`Bot error on ${ip}:${port}`);
-      console.log(err);
+      // console.log(`Bot error on ${ip}:${port}`, err);
       result = null;
     }
     while (result == 'retry') {
       try {
         result = await check(ip, port, version.minecraftVersion);
       } catch (err) {
-        console.log(`Error on ${ip}:${port}`);
-        console.log(err);
+        // console.log(`Error on ${ip}:${port} ${slp.version.protocol}`, err);
         result = 'retry';
       }
-      await new Promise(res => setTimeout(res, 500));
+      await new Promise(res => setTimeout(res, 1000));
     }
-    console.log(`${ip}:${port} ${version.minecraftVersion} ${result == null ? 'unknown' : result}`);
+    if (result != null) console.log(`${ip}:${port} ${version.minecraftVersion} ${result == null ? 'unknown' : result}`);
+    scannedServers.updateOne({ ip, port }, { $set: { ip, port, version: slp.version, description: slp.description, enforcesSecureChat: slp.enforcesSecureChat, hasFavicon: slp.favicon != null, hasForgeData: slp.forgeData != null, whitelist: result, lastSeen: Math.floor((new Date()).getTime() / 1000) } }, { upsert: true });
     // await new Promise(res => setTimeout(res, 1000));
   }
-})()
+})();
