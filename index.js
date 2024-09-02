@@ -1,9 +1,9 @@
 const fs = require('fs');
 const mineflayer = require('mineflayer');
 const ping = require('./ping.js');
-const MongoClient = require('mongodb').MongoClient;
 const config = require('./config.json');
-const scannedServers = new MongoClient(config.mongoURI).db(config.dbName).collection(config.collectionName);
+const mongoClient = new (require('mongodb').MongoClient)(config.mongoURI);
+let scannedServers;
 
 function check(ip, port, version) {
   return new Promise((resolve, reject) => {
@@ -50,6 +50,10 @@ function check(ip, port, version) {
 }
 
 (async () => {
+  await mongoClient.connect();
+  scannedServers = mongoClient.db(config.dbName).collection(config.collectionName);
+  console.log('Scanning');
+
   const versions = await (await fetch('https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json')).json();
   let start = new Date().getTime();
   const ips = fs.readFileSync(config.ipsPath);
