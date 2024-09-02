@@ -5,7 +5,7 @@ const config = require('./config.json');
 const mongoClient = new (require('mongodb').MongoClient)(config.mongoURI);
 let scannedServers;
 
-function check(ip, port, version) {
+function check(username, password, ip, port, version) {
   return new Promise((resolve, reject) => {
     let endTimeout = setTimeout(() => resolve(null), 6000);
 
@@ -14,8 +14,8 @@ function check(ip, port, version) {
       port,
       version,
       auth: 'microsoft',
-      username: config.username,
-      password: config.password
+      username: username,
+      password: password
     })
 
     bot.on('login', async () => {
@@ -49,6 +49,7 @@ function check(ip, port, version) {
   });
 }
 
+lastResult = new Date().getTime();
 async function scan() {
   await mongoClient.connect();
   scannedServers = mongoClient.db(config.dbName).collection(config.collectionName);
@@ -58,6 +59,7 @@ async function scan() {
   let start = new Date().getTime();
   const ips = fs.readFileSync(config.ipsPath);
   for (let i = 0; i < ips.length; i += 6) {
+    const account = config.accounts[(i / 6) % config.accounts.length];
     const ip = `${ips[i]}.${ips[i + 1]}.${ips[i + 2]}.${ips[i + 3]}`;
     const port = ips[i + 4] * 256 + ips[i + 5];
     const slp = await ping(ip, port, 0);
@@ -66,21 +68,22 @@ async function scan() {
     if (version == null) continue;
     let result;
     try {
-      result = await check(ip, port, version.minecraftVersion);
+      result = await check(account.username, account.password, ip, port, version.minecraftVersion);
     } catch (err) {
       // console.log(`Bot error on ${ip}:${port}`, err);
       result = null;
     }
     while (result == 'retry') {
       try {
-        result = await check(ip, port, version.minecraftVersion);
+        result = await check(account.username, account.password, ip, port, version.minecraftVersion);
       } catch (err) {
         // console.log(`Error on ${ip}:${port} ${slp.version.protocol}`, err);
         result = 'retry';
       }
       await new Promise(res => setTimeout(res, 1000));
     }
-    if (result != null) console.log(`${ip}:${port} ${version.minecraftVersion} ${result == null ? 'unknown' : result}`);
+    console.log(`${ip}:${port} ${version.minecraftVersion} ${result == null ? 'unknown' : result}  ${new Date().getTime() - lastResult}`);
+    lastResult = new Date().getTime();
     scannedServers.updateOne({ ip, port }, { $set: { ip, port, version: slp.version, description: slp.description, enforcesSecureChat: slp.enforcesSecureChat, hasFavicon: slp.favicon != null, hasForgeData: slp.forgeData != null, whitelist: result, lastSeen: Math.floor((new Date()).getTime() / 1000) } }, { upsert: true });
     // await new Promise(res => setTimeout(res, 1000));
   }
