@@ -84,7 +84,18 @@ async function scan() {
     }
     if (result != null) console.log(`${ip}:${port} ${version.minecraftVersion} ${result} ${(new Date().getTime() - lastResult) / 1000}s`);
     lastResult = new Date().getTime();
-    scannedServers.updateOne({ ip, port }, { $set: { ip, port, version: slp.version, description: slp.description, enforcesSecureChat: slp.enforcesSecureChat, hasFavicon: slp.favicon != null, hasForgeData: slp.forgeData != null, whitelist: result, lastSeen: Math.floor((new Date()).getTime() / 1000) } }, { upsert: true });
+    const document  = {
+      ip,
+      port,
+      version: slp.version,
+      description: slp.description,
+      enforcesSecureChat: slp.enforcesSecureChat,
+      hasFavicon: slp.favicon != null,
+      hasForgeData: slp.forgeData != null,
+      lastSeen: Math.floor((new Date()).getTime() / 1000)
+    }
+    if (result != null) document.whitelist = result;
+    scannedServers.updateOne({ ip, port }, { $set: document }, { upsert: true });
     // await new Promise(res => setTimeout(res, 1000));
   }
   if (config.repeat) setTimeout(scan, 0);
