@@ -49,7 +49,7 @@ function check(ip, port, version) {
   });
 }
 
-(async () => {
+async function scan() {
   await mongoClient.connect();
   scannedServers = mongoClient.db(config.dbName).collection(config.collectionName);
   console.log('Scanning');
@@ -84,4 +84,7 @@ function check(ip, port, version) {
     scannedServers.updateOne({ ip, port }, { $set: { ip, port, version: slp.version, description: slp.description, enforcesSecureChat: slp.enforcesSecureChat, hasFavicon: slp.favicon != null, hasForgeData: slp.forgeData != null, whitelist: result, lastSeen: Math.floor((new Date()).getTime() / 1000) } }, { upsert: true });
     // await new Promise(res => setTimeout(res, 1000));
   }
-})();
+  if (config.repeat) setTimeout(scan, 0);
+}
+
+scan();
