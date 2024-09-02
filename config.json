@@ -1,9 +1,13 @@
 {
-  "username": "",
-  "password": "",
+  "accounts": [
+    {
+      "username": "",
+      "password": ""
+    }
+  ],
   "ipsPath": "./ips",
   "mongoURI": "",
   "dbName": "",
   "collectionName": "",
-  "repeat": false
+  "repeat": true
 }
