@@ -5,7 +5,7 @@ const config = require('./config.json');
 const mongoClient = new (require('mongodb').MongoClient)(config.mongoURI);
 let scannedServers;
 
-function check(username, password, ip, port, version) {
+function join(username, password, ip, port, version) {
   return new Promise((resolve, reject) => {
     let endTimeout = setTimeout(() => resolve(null), 6000);
 
@@ -20,7 +20,7 @@ function check(username, password, ip, port, version) {
 
     bot.on('login', async () => {
       bot.chat('This is a server scanner bot created by Cornbread2100. If you don\'t want your server to be joinable by random people, the only way to protect your server is by enabling a whitelist. Just banning this bot will NOT protect your server.');
-      bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. If you have any questions or concerns, you can contact me on Discord at @cornbread2100 or email me at support@cornbread2100.com');
+      bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop.');
       clearTimeout(endTimeout);
       endTimeout = setTimeout(() => {
         bot.end();
@@ -53,29 +53,31 @@ lastResult = new Date().getTime();
 async function scan() {
   await mongoClient.connect();
   scannedServers = mongoClient.db(config.dbName).collection(config.collectionName);
-  console.log('Scanning');
-
-  const versions = await (await fetch('https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json')).json();
   let start = new Date().getTime();
   const ips = fs.readFileSync(config.ipsPath);
-  for (let i = 0; i < ips.length; i += 6) {
-    const account = config.accounts[(i / 6) % config.accounts.length];
-    const ip = `${ips[i]}.${ips[i + 1]}.${ips[i + 2]}.${ips[i + 3]}`;
-    const port = ips[i + 4] * 256 + ips[i + 5];
+  const startIndex = Math.floor(Math.random() * ips.length / 6) * 6;
+  console.log(`Scanning ${ips.length / 6} servers`);
+
+  const versions = await (await fetch('https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json')).json();
+
+  async function check(index) {
+    const account = config.accounts[(index / 6) % config.accounts.length];
+    const ip = `${ips[index]}.${ips[index + 1]}.${ips[index + 2]}.${ips[index + 3]}`;
+    const port = ips[index + 4] * 256 + ips[index + 5];
     const slp = await ping(ip, port, 0);
-    if (typeof slp == 'string' || slp?.version?.protocol == null) continue;
+    if (typeof slp == 'string' || slp?.version?.protocol == null) return;
     const version = versions.find(a => a.version == slp.version.protocol);
-    if (version == null) continue;
+    if (version == null) return;
     let result;
     try {
-      result = await check(account.username, account.password, ip, port, version.minecraftVersion);
+      result = await join(account.username, account.password, ip, port, version.minecraftVersion);
     } catch (err) {
       // console.log(`Bot error on ${ip}:${port}`, err);
       result = null;
     }
     while (result == 'retry') {
       try {
-        result = await check(account.username, account.password, ip, port, version.minecraftVersion);
+        result = await join(account.username, account.password, ip, port, version.minecraftVersion);
       } catch (err) {
         // console.log(`Error on ${ip}:${port} ${slp.version.protocol}`, err);
         result = 'retry';
@@ -98,6 +100,10 @@ async function scan() {
     scannedServers.updateOne({ ip, port }, { $set: document }, { upsert: true });
     // await new Promise(res => setTimeout(res, 1000));
   }
+
+  for (let i = startIndex; i < ips.length; i += 6) await check(i);
+  for (let i = 0; i < startIndex; i += 6) await check(i);
+
   if (config.repeat) setTimeout(scan, 0);
 }
 
