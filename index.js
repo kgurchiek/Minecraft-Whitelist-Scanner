@@ -19,7 +19,7 @@ function join(username, password, ip, port, version) {
     })
 
     bot.on('login', async () => {
-      bot.chat('This is a server scanner bot created by Cornbread2100. If you don\'t want your server to be joinable by random people, the only way to protect your server is by enabling a whitelist. Just banning this bot will NOT protect your server.');
+      bot.chat('This is a bot created by Cornbread2100. If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Just banning this bot will NOT protect your server.');
       bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop.');
       clearTimeout(endTimeout);
       endTimeout = setTimeout(() => {
