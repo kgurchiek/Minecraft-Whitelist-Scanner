@@ -54,7 +54,7 @@ async function scan() {
   await mongoClient.connect();
   scannedServers = mongoClient.db(config.dbName).collection(config.collectionName);
   let start = new Date().getTime();
-  const ips = fs.readFileSync(config.ipsPath);
+  const ips = config.customIps ? fs.readFileSync(config.ipsPath) : Buffer.from(await (await fetch('https://github.com/kgurchiek/Minecraft-Server-Scanner/raw/main/ips')).arrayBuffer());
   const startIndex = Math.floor(Math.random() * ips.length / 6) * 6;
   console.log(`Scanning ${ips.length / 6} servers`);
 
