@@ -21,16 +21,21 @@ module.exports = (ip, port, packet, timeout = 5000) => {
       resolve(err.toString());
     });
     client.on('data', newData => {
-      if (data.length == 0) {
-        length = varint.decode(newData);
-        newData = newData.subarray(varint.decode.bytes);
-      }
-      data = Buffer.concat([data, newData]);
-      if (data.length >= length) {
-        data = data.subarray(0, length);
-        hasResponded = true;
+      try {
+        if (data.length == 0) {
+          length = varint.decode(newData);
+          newData = newData.subarray(varint.decode.bytes);
+        }
+        data = Buffer.concat([data, newData]);
+        if (data.length >= length) {
+          data = data.subarray(0, length);
+          hasResponded = true;
+          client.destroy();
+          resolve(data);
+        }
+      } catch (err) {
         client.destroy();
-        resolve(data);
+        resolve(err.toString());
       }
     })
   })
