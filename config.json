@@ -1,13 +1,18 @@
 {
-  "accounts": [
-    {
-      "username": "",
-      "password": ""
+    "accounts": [
+        {
+            "username": "",
+            "password": ""
+        }
+    ],
+    "suppressLogs": true,
+    "customIps": false,
+    "ipsPath": "./ips",
+    "sql": {
+        "host": "",
+        "port": 5432,
+        "user": "",
+        "password": "",
+        "database": ""
     }
-  ],
-  "ipsPath": "./ips",
-  "mongoURI": "",
-  "dbName": "",
-  "collectionName": "",
-  "repeat": true
 }
