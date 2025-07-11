@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const mineflayer = require('mineflayer');
 const auth = require('prismarine-auth');
+const mcData = require('minecraft-data');
 const ping = require('./ping.js');
 const config = require('./config.json');
 const pg = require('pg');
@@ -16,53 +17,59 @@ client = new pg.Client({
         rejectUnauthorized: false
     }
 });
+Error.stackTraceLimit = 50;
 
-function join(account, ip, port) {
+function join(account, ip, port, version) {
     return new Promise(async (resolve, reject) => {
         await refreshToken(account);
         let endTimeout = setTimeout(() => resolve(null), 6000);
 
-        const bot = mineflayer.createBot({
-            host: ip,
-            port,
-            auth: 'microsoft',
-            username: account.username,
-            profilesFolder: path.join(__dirname, '.auth-cache'),
-            logErrors: !config.suppressLogs,
-            hideErrors: config.suppressLogs
-        })
+        try {
+            const bot = mineflayer.createBot({
+                host: ip,
+                port,
+                version,
+                auth: 'microsoft',
+                username: account.username,
+                profilesFolder: path.join(__dirname, '.auth-cache'),
+                logErrors: !config.suppressLogs,
+                hideErrors: config.suppressLogs
+            })
 
-        bot.on('login', async () => {
-            resolve(false);
-            clearTimeout(endTimeout);
-            if (config.chatWarning) {
-                endTimeout = setTimeout(() => {
-                    bot.end();
-                    resolve(false);
-                }, 3000);
-                bot.on('chat', (username, message) => {
-                    if (bot.username != username) return;
-                    clearTimeout(endTimeout);
-                    bot.end();
-                });
+            bot.on('login', async () => {
+                resolve(false);
+                clearTimeout(endTimeout);
+                if (config.chatWarning) {
+                    endTimeout = setTimeout(() => {
+                        bot.end();
+                        resolve(false);
+                    }, 3000);
+                    bot.on('chat', (username, message) => {
+                        if (bot.username != username) return;
+                        clearTimeout(endTimeout);
+                        bot.end();
+                    });
 
-                bot.chat('WARNING: If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Banning this bot will NOT protect your server.');
-                bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. DM @cornbread2100 on Discord for more info.');
-            } else bot.end();
-        });
+                    bot.chat('WARNING: If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Banning this bot will NOT protect your server.');
+                    bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. DM @cornbread2100 on Discord for more info.');
+                } else bot.end();
+            });
 
-        // Log errors and kick reasons:
-        bot.on('kicked', (reason) => {
-            if (typeof reason == 'object') reason = JSON.stringify(reason);
-            // console.log(`Kicked from ${ip}:${port}`, reason);
-            if (reason.includes('You are not whitelisted on this server') || reason.includes('multiplayer.disconnect.not_whitelisted')) resolve(true);
-            else resolve(null);
-        });
-        bot.on('error', (err) => {
-            // console.log(`Error on ${ip}:${port} ${version}`, err);
-            if (err.message.includes('RateLimiter disallowed request') || err.message.includes('Failed to obtain profile data')) resolve('retry');
-            else resolve(null);
-        });
+            // Log errors and kick reasons:
+            bot.on('kicked', (reason) => {
+                if (typeof reason == 'object') reason = JSON.stringify(reason);
+                // console.log(`Kicked from ${ip}:${port}`, reason);
+                if (reason.includes('You are not whitelisted on this server') || reason.includes('multiplayer.disconnect.not_whitelisted')) resolve(true);
+                else resolve(null);
+            });
+            bot.on('error', (err) => {
+                // console.log(`Error on ${ip}:${port} ${version}`, err);
+                if (err.message.includes('RateLimiter disallowed request') || err.message.includes('Failed to obtain profile data')) resolve('retry');
+                else resolve(null);
+            });
+        } catch (err) {
+            resolve(null);
+        }
     });
 }
 
@@ -88,18 +95,20 @@ async function scan() {
         const ip = `${ips[index]}.${ips[index + 1]}.${ips[index + 2]}.${ips[index + 3]}`;
         const port = ips[index + 4] * 256 + ips[index + 5];
         const slp = await ping(ip, port, 0);
-        if (typeof slp == 'string' || slp?.version?.protocol == null) return;
+        if (typeof slp == 'string' || slp?.version?.protocol == null || typeof slp?.version?.protocol != 'number') return;
+        let version = mcData(slp?.version?.protocol)?.version?.minecraftVersion;
+        if (version == null) return;
         let result;
         try {
-            result = await join(account, ip, port);
+            result = await join(account, ip, port, version);
         } catch (err) {
             // console.log(`Bot error on ${ip}:${port}`, err);
             result = null;
         }
         while (result == 'retry') {
-            await new Promise(res => setTimeout(res, 2000));
+            await new Promise(res => setTimeout(res, 10000));
             try {
-                result = await join(account, ip, port);
+                result = await join(account, ip, port, version);
             } catch (err) {
                 // console.log(`Bot error on ${ip}:${port} ${slp.version.protocol}`, err);
                 result = null;
