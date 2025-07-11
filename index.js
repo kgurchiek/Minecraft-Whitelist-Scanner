@@ -67,12 +67,12 @@ function join(account, ip, port) {
 }
 
 async function refreshToken(account) {
-    new auth.Authflow(account.username, path.join(__dirname, '.auth-cache'), {
+    await (new auth.Authflow(account.username, path.join(__dirname, '.auth-cache'), {
         flow: 'live',
         password: account.password,
         authTitle: auth.Titles.MinecraftJava,
         deviceType: 'Win32'
-    });
+    })).getMinecraftJavaToken();
 }
 
 async function scan() {
