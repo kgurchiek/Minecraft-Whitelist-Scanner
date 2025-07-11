@@ -3,6 +3,7 @@ const path = require('path');
 const mineflayer = require('mineflayer');
 const auth = require('prismarine-auth');
 const mcData = require('minecraft-data');
+const protocol = require('minecraft-protocol');
 const ping = require('./ping.js');
 const config = require('./config.json');
 const pg = require('pg');
@@ -97,7 +98,7 @@ async function scan() {
         const slp = await ping(ip, port, 0);
         if (typeof slp == 'string' || slp?.version?.protocol == null || typeof slp?.version?.protocol != 'number') return;
         let version = mcData(slp?.version?.protocol)?.version?.minecraftVersion;
-        if (version == null) return;
+        if (version == null || !protocol.supportedVersions.includes(version)) return;
         let result;
         try {
             result = await join(account, ip, port, version);
