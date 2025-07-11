@@ -1,10 +1,10 @@
 const fs = require('fs');
+const path = require('path');
 const mineflayer = require('mineflayer');
 const auth = require('prismarine-auth');
 const ping = require('./ping.js');
 const config = require('./config.json');
 const pg = require('pg');
-const { ref } = require('process');
 client = new pg.Client({
     host: config.sql.host,
     port: config.sql.port,
@@ -27,24 +27,29 @@ function join(account, ip, port) {
             port,
             auth: 'microsoft',
             username: account.username,
-            tokens: account.tokens
+            profilesFolder: path.join(__dirname, '.auth-cache'),
+            logErrors: !config.suppressLogs,
+            hideErrors: config.suppressLogs
         })
 
         bot.on('login', async () => {
             resolve(false);
-            bot.chat('WARNING: If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Banning this bot will NOT protect your server.');
-            bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. DM @cornbread2100 on Discord for more info.');
             clearTimeout(endTimeout);
-            endTimeout = setTimeout(() => {
-                bot.end();
-                resolve(false);
-            }, 3000);
+            if (config.chatWarning) {
+                endTimeout = setTimeout(() => {
+                    bot.end();
+                    resolve(false);
+                }, 3000);
+                bot.on('chat', (username, message) => {
+                    if (bot.username != username) return;
+                    clearTimeout(endTimeout);
+                    bot.end();
+                });
+
+                bot.chat('WARNING: If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Banning this bot will NOT protect your server.');
+                bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. DM @cornbread2100 on Discord for more info.');
+            } else bot.end();
         });
-        bot.on('chat', (username, message) => { 
-            if (bot.username != username) return;
-            clearTimeout(endTimeout);
-            bot.end();
-        })
 
         // Log errors and kick reasons:
         bot.on('kicked', (reason) => {
@@ -62,14 +67,12 @@ function join(account, ip, port) {
 }
 
 async function refreshToken(account) {
-    const flow = new auth.Authflow(account.username, './.auth-cache', {
+    new auth.Authflow(account.username, path.join(__dirname, '.auth-cache'), {
         flow: 'live',
         password: account.password,
         authTitle: auth.Titles.MinecraftJava,
         deviceType: 'Win32'
     });
-    account.tokens = await flow.getMinecraftJavaToken({ fetchProfile: true });
-    account.expiration = JSON.parse(Buffer.from(account.tokens.token.split('.')[1], 'base64').toString()).exp;
 }
 
 async function scan() {
@@ -87,14 +90,6 @@ async function scan() {
         const slp = await ping(ip, port, 0);
         if (typeof slp == 'string' || slp?.version?.protocol == null) return;
         let result;
-        let oldLog = console.log;
-        let oldWarn = console.warn;
-        let oldError = console.error;
-        if (config.suppressLogs) {
-            console.log = () => {};
-            console.warn = () => {};
-            console.error = () => {};
-        }
         try {
             result = await join(account, ip, port);
         } catch (err) {
@@ -109,11 +104,6 @@ async function scan() {
                 // console.log(`Bot error on ${ip}:${port} ${slp.version.protocol}`, err);
                 result = null;
             }
-        }
-        if (config.suppressLogs) {
-            console.log = oldLog;
-            console.warn = oldWarn;
-            console.error = oldError;
         }
         if (result == null) return;
         console.log(`${ip}:${port} ${result}`);

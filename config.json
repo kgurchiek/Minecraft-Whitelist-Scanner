@@ -5,7 +5,8 @@
             "password": ""
         }
     ],
-    "suppressLogs": true,
+    "chatWarning": true,
+    "suppressLogs": false,
     "customIps": false,
     "ipsPath": "./ips",
     "sql": {
