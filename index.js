@@ -18,7 +18,6 @@ client = new pg.Client({
         rejectUnauthorized: false
     }
 });
-Error.stackTraceLimit = 50;
 
 function join(account, ip, port, version) {
     return new Promise(async (resolve, reject) => {
