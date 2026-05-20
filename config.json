@@ -1,8 +1,7 @@
 {
     "accounts": [
         {
-            "username": "",
-            "password": ""
+            "username": ""
         }
     ],
     "chatWarning": true,
