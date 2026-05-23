@@ -21,7 +21,7 @@ client = new pg.Client({
 
 function join(account, ip, port, version) {
     return new Promise(async (resolve, reject) => {
-        await refreshToken(account);
+        //await refreshToken(account);
         let endTimeout = setTimeout(() => resolve(null), 6000);
 
         try {
@@ -30,7 +30,7 @@ function join(account, ip, port, version) {
                 port,
                 version,
                 auth: 'microsoft',
-                username: account.username,
+                username: account,
                 profilesFolder: path.join(__dirname, '.auth-cache'),
                 logErrors: !config.suppressLogs,
                 hideErrors: config.suppressLogs
@@ -50,8 +50,12 @@ function join(account, ip, port, version) {
                         bot.end();
                     });
 
-                    bot.chat('WARNING: If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Banning this bot will NOT protect your server.');
-                    bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. DM @cornbread2100 on Discord for more info.');
+                    try {
+                        bot.chat('WARNING: If you don\'t want your server to be joined (and likely destroyed) by random people, the only way to protect your server is by enabling a whitelist. Banning this bot will NOT protect your server.');
+                        bot.chat('If this is intended to be a public server, simply ban this bot and my messages will stop. DM @cornbread2100 on Discord for more info.');
+                    } catch (err) {
+                        //console.log('Error sending chat message:', err);
+                    }
                 } else bot.end();
             });
 
@@ -74,12 +78,8 @@ function join(account, ip, port, version) {
 }
 
 async function refreshToken(account) {
-    await (new auth.Authflow(account.username, path.join(__dirname, '.auth-cache'), {
-        flow: 'live',
-        password: account.password,
-        authTitle: auth.Titles.MinecraftJava,
-        deviceType: 'Win32'
-    })).getMinecraftJavaToken();
+    console.log(`Refreshing token for ${account}...`)
+    await (new auth.Authflow(account, path.join(__dirname, '.auth-cache'))).getMinecraftJavaToken();
 }
 
 async function scan() {
@@ -94,6 +94,7 @@ async function scan() {
         const account = config.accounts[(index / 6) % config.accounts.length];
         const ip = `${ips[index]}.${ips[index + 1]}.${ips[index + 2]}.${ips[index + 3]}`;
         const port = ips[index + 4] * 256 + ips[index + 5];
+        if (port != 25565) return;
         const slp = await ping(ip, port, 0);
         if (typeof slp == 'string' || slp?.version?.protocol == null || typeof slp?.version?.protocol != 'number') return;
         let version = mcData(slp?.version?.protocol)?.version?.minecraftVersion;
